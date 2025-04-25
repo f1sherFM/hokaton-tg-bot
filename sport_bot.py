@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # Конфигурация
 class Config:
     # Настройки базы данных
-    DB_NAME = "sport_bot_db"
+    DB_NAME = "sport_bot_bd"
     DB_USER = "postgres"
     DB_PASSWORD = "root"
     DB_HOST = "localhost"
@@ -36,7 +36,7 @@ class Config:
     # Настройки Mistral AI
     MISTRAL_API_KEY = "nG2ac1xdGlnSHW2U7IEee6HADxcPf7fY"
     MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
-    MISTRAL_MODEL = "mistral-small"
+    MISTRAL_MODEL = "mistral-small" # or mistral-tiny
     
     # Настройки уровней
     XP_PER_VISIT = 10
@@ -64,6 +64,10 @@ class Database:
     def __init__(self):
         self.conn = None
         
+class Database:
+    def __init__(self):
+        self.conn = None
+        
     async def connect(self):
         try:
             self.conn = psycopg2.connect(
@@ -71,11 +75,18 @@ class Database:
                 user=Config.DB_USER,
                 password=Config.DB_PASSWORD,
                 host=Config.DB_HOST,
-                port=Config.DB_PORT
+                port=Config.DB_PORT,
+                connect_timeout=5
             )
-            logger.info("Successfully connected to PostgreSQL database")
+            logger.info("Successfully connected to PostgreSQL")
         except Exception as e:
-            logger.error(f"Error connecting to PostgreSQL: {e}")
+            logger.error(f"Connection failed: {e}")
+            import socket
+            try:
+                socket.create_connection((Config.DB_HOST, int(Config.DB_PORT)), 5)
+                logger.info("Network connection to PostgreSQL port successful")
+            except socket.error as err:
+                logger.error(f"Network connection failed: {err}")
             raise
             
     async def close(self):
@@ -227,7 +238,7 @@ async def send_welcome(message: types.Message):
         f"Сгенерируй дружелюбное приветствие для нового пользователя спортивного чат-бота. "
         f"Имя пользователя: {user.first_name or 'друг'}. "
         f"Бот помогает находить спортивные объекты в Сургуте, записываться на тренировки и участвовать в челленджах. "
-        f"Приветствие должно быть кратким (1-2 предложения), мотивирующим и включать эмодзи."
+        f"Приветствие должно быть кратким (1-2 предложения), мотивирующим и включать эмодзи. Важно, отвечай на русском!"
     )
     
     greeting = await mistral.generate_response(prompt)
@@ -536,7 +547,7 @@ async def show_user_stats(message: types.Message):
             f"Основные активности: {activities}. "
             f"Дата регистрации: {reg_date}. "
             "Напиши мотивирующее сообщение на 2-3 предложения, отмечая достижения "
-            "и предлагая варианты для дальнейшего роста. Используй эмодзи."
+            "и предлагая варианты для дальнейшего роста. Используй эмодзи. Отвечай на русском!"
         )
         
         ai_response = await mistral.generate_response(prompt)
